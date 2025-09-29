@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>YouTube Timer Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 24px auto; }
+    form { display: flex; gap: 8px; margin-bottom: 16px; }
+    input[type=number]{ padding:8px; width:140px; }
+    button{ padding:8px 12px; cursor:pointer; }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; }
+    .card{ border:1px solid #ddd; border-radius:8px; padding:10px; }
+    .thumb{ width:100%; height:auto; border-radius:6px; display:block; }
+    .title{ font-size:14px; margin:8px 0 4px; }
+    .meta{ color:#666; font-size:12px; }
+  </style>
+</head>
+<body>
+  <h1>YouTube Timer Finder</h1>
+
+  <form id="finder">
+    <label>分: <input type="number" id="minutes" min="1" value="5" required></label>
+    <label>秒: <input type="number" id="seconds" min="0" value="0" required></label>
+    <button type="submit">探す</button>
+  </form>
+
+  <div id="status"></div>
+  <div id="results" class="grid"></div>
+
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    function secToHMS(sec){
+      const h = Math.floor(sec/3600);
+      const m = Math.floor((sec%3600)/60);
+      const s = sec%60;
+      return (h?`${h}時間`:"") + (m?`${m}分`:"") + `${s}秒`;
+    }
+
+    document.getElementById("finder").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const m = Number(document.getElementById("minutes").value || 0);
+      const s = Number(document.getElementById("seconds").value || 0);
+      const total = m*60 + s;
+
+      const status = document.getElementById("status");
+      const results = document.getElementById("results");
+      results.innerHTML = "";
+      status.textContent = "検索中...";
+
+      try{
+        const res = await fetch(`${API_BASE}/?seconds=${total}`);
+        const data = await res.json();
+
+        if(!data.closest_videos || data.closest_videos.length === 0){
+          status.textContent = "条件に合う動画なし。";
+          return;
+        }
+
+        status.textContent = `目標: ${secToHMS(data.target_duration_seconds)} / ヒット: ${data.closest_videos.length}`;
+
+        data.closest_videos.forEach(v=>{
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const a = document.createElement("a");
+          a.href = v.url;
+          a.target = "_blank";
+
+          const img = document.createElement("img");
+          img.src = v.thumbnail || "";
+          img.alt = v.title;
+          img.className = "thumb";
+          a.appendChild(img);
+
+          const title = document.createElement("div");
+          title.className = "title";
+          title.textContent = v.title;
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.textContent = `差分: ${v.difference_seconds}s / 実長さ: ${secToHMS(v.duration_seconds)} / ${v.channel}`;
+
+          card.appendChild(a);
+          card.appendChild(title);
+          card.appendChild(meta);
+          results.appendChild(card);
+        });
+
+      }catch(err){
+        status.textContent = "エラー: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
