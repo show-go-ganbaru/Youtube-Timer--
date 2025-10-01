@@ -4,91 +4,69 @@
   <meta charset="UTF-8" />
   <title>YouTube Timer Finder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 24px auto; }
-    form { display: flex; gap: 8px; margin-bottom: 16px; }
-    input[type=number]{ padding:8px; width:140px; }
-    button{ padding:8px 12px; cursor:pointer; }
-    .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; }
-    .card{ border:1px solid #ddd; border-radius:8px; padding:10px; }
-    .thumb{ width:100%; height:auto; border-radius:6px; display:block; }
-    .title{ font-size:14px; margin:8px 0 4px; }
-    .meta{ color:#666; font-size:12px; }
-  </style>
-</head>
-<body>
-  <h1>YouTube Timer Finder</h1>
 
-  <form id="finder">
-    <label>分: <input type="number" id="minutes" min="1" value="5" required></label>
-    <label>秒: <input type="number" id="seconds" min="0" value="0" required></label>
-    <button type="submit">探す</button>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="max-w-3xl mx-auto p-4">
+  <h1 class="text-2xl font-bold mb-4">YouTube Timer Finder</h1>
+
+  <form id="finder" class="flex gap-2 mb-4 items-end">
+    <label class="block">
+      <span class="text-sm">分</span>
+      <input type="number" id="minutes" min="1" value="5" required class="border px-2 py-1 rounded w-24">
+    </label>
+    <label class="block">
+      <span class="text-sm">秒</span>
+      <input type="number" id="seconds" min="0" value="0" required class="border px-2 py-1 rounded w-24">
+    </label>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">探す</button>
   </form>
 
-  <div id="status"></div>
-  <div id="results" class="grid"></div>
+  <div id="status" class="text-gray-600 mb-2"></div>
+  <div id="results" class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(240px,1fr))]"></div>
 
   <script>
     const API_BASE = "http://localhost:5000";
 
-    function secToHMS(sec){
-      const h = Math.floor(sec/3600);
-      const m = Math.floor((sec%3600)/60);
-      const s = sec%60;
+    const secToHMS = (sec) => {
+      const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
       return (h?`${h}時間`:"") + (m?`${m}分`:"") + `${s}秒`;
-    }
+    };
 
-    document.getElementById("finder").addEventListener("submit", async (e)=>{
+    document.getElementById("finder").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const m = Number(document.getElementById("minutes").value || 0);
-      const s = Number(document.getElementById("seconds").value || 0);
-      const total = m*60 + s;
+      const total = Number(document.getElementById("minutes").value||0)*60
+                  + Number(document.getElementById("seconds").value||0);
 
       const status = document.getElementById("status");
       const results = document.getElementById("results");
+      status.textContent = "検索中…";
       results.innerHTML = "";
-      status.textContent = "検索中...";
 
-      try{
+      try {
         const res = await fetch(`${API_BASE}/?seconds=${total}`);
         const data = await res.json();
 
-        if(!data.closest_videos || data.closest_videos.length === 0){
-          status.textContent = "条件に合う動画なし。";
-          return;
-        }
+        const list = data.closest_videos || [];
+        if (!list.length) { status.textContent = "条件に合う動画なし。"; return; }
 
-        status.textContent = `目標: ${secToHMS(data.target_duration_seconds)} / ヒット: ${data.closest_videos.length}`;
+        status.textContent = `目標: ${secToHMS(data.target_duration_seconds)} / ヒット: ${list.length}`;
 
-        data.closest_videos.forEach(v=>{
+        list.forEach(v => {
           const card = document.createElement("div");
-          card.className = "card";
-
-          const a = document.createElement("a");
-          a.href = v.url;
-          a.target = "_blank";
-
-          const img = document.createElement("img");
-          img.src = v.thumbnail || "";
-          img.alt = v.title;
-          img.className = "thumb";
-          a.appendChild(img);
-
-          const title = document.createElement("div");
-          title.className = "title";
-          title.textContent = v.title;
-
-          const meta = document.createElement("div");
-          meta.className = "meta";
-          meta.textContent = `差分: ${v.difference_seconds}s / 実長さ: ${secToHMS(v.duration_seconds)} / ${v.channel}`;
-
-          card.appendChild(a);
-          card.appendChild(title);
-          card.appendChild(meta);
+          card.className = "border rounded p-3 shadow-sm hover:shadow transition";
+          card.innerHTML = `
+            <a href="${v.url}" target="_blank">
+              <img class="w-full rounded" src="${v.thumbnail||""}" alt="${v.title}">
+            </a>
+            <div class="font-semibold text-sm mt-2">${v.title}</div>
+            <div class="text-xs text-gray-600">
+              実長さ: ${secToHMS(v.duration_seconds)} / 差分: ${v.difference_seconds}s / ${v.channel}
+            </div>
+          `;
           results.appendChild(card);
         });
-
-      }catch(err){
+      } catch (err) {
         status.textContent = "エラー: " + err.message;
       }
     });
