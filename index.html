@@ -44,7 +44,7 @@
       results.innerHTML = "";
 
       try {
-        const res = await fetch(`${API_BASE}/?seconds=${total}`);
+        const res = await fetch(`${API_BASE}?seconds=${total}`);
         const data = await res.json();
 
         const list = data.closest_videos || [];
