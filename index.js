@@ -5,6 +5,7 @@ import "dotenv/config";
 const API_KEY = process.env.YOUTUBE_API_KEY;
 const PORT = process.env.PORT || 5000;
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "*";
+const API_BASE = "https://youtube-timer-backend-xxxxx.onrender.com/api";
 
 const cache = new Map();
 const TTL_MS = 10 * 60 * 1000; // 10分キャッシュ
